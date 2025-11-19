@@ -1,12 +1,10 @@
-import { Timestamp } from 'firebase/firestore';
-
 export interface Subscription {
   id: string;
   name: string;
   cost: number;
   cycle: 'monthly' | 'annually' | 'weekly';
-  nextDue: Timestamp;
-  createdAt: Timestamp;
+  nextDue: Date;
+  createdAt: Date;
 }
 
 export interface UserSettings {

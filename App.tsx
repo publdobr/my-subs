@@ -1,7 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, onSnapshot, query, deleteDoc, doc, Firestore } from 'firebase/firestore';
 
 // Components
 import { SubscriptionCard } from './components/SubscriptionCard';
@@ -13,64 +10,29 @@ import { Squiggle, WobblyCloud, Star, AbstractBlob, TriangleBlob } from './compo
 import { Subscription } from './types';
 import { COLORS } from './constants';
 
-// Environment Variables (Fallback)
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
-
 const App = () => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [db, setDb] = useState<Firestore | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const app = initializeApp(firebaseConfig);
-      const firestore = getFirestore(app);
-      const auth = getAuth(app);
-      setDb(firestore);
-
-      const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          if (initialAuthToken) {
-            await signInWithCustomToken(auth, initialAuthToken);
-          } else {
-            await signInAnonymously(auth);
-          }
-        }
-        setUserId(auth.currentUser?.uid || null);
-      });
-      return () => unsubscribe();
-    } catch (error) {
-      console.error("Firebase init error:", error);
+    const storedSubscriptions = localStorage.getItem('subscriptions');
+    if (storedSubscriptions) {
+      setSubscriptions(JSON.parse(storedSubscriptions));
     }
   }, []);
 
   useEffect(() => {
-    if (!db || !userId) return;
-    
-    const q = query(collection(db, `/artifacts/${appId}/users/${userId}/subscriptions`));
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const subs = snap.docs.map(d => {
-        const data = d.data();
-        return { 
-            id: d.id, 
-            ...data,
-            cost: typeof data.cost === 'number' ? data.cost : 0,
-            cycle: data.cycle || 'monthly'
-        } as Subscription;
-      });
-      setSubscriptions(subs);
-    });
-    return () => unsubscribe();
-  }, [db, userId]);
+    localStorage.setItem('subscriptions', JSON.stringify(subscriptions));
+  }, [subscriptions]);
+
+  const handleAddSubscription = (newSubscription: Omit<Subscription, 'id'>) => {
+    setSubscriptions(prev => [...prev, { ...newSubscription, id: crypto.randomUUID() }]);
+  };
 
   const handleDelete = useCallback(async (id: string) => {
-    if (!db || !userId) return;
     if (window.confirm('Удалить эту подписку?')) {
-      await deleteDoc(doc(db, `/artifacts/${appId}/users/${userId}/subscriptions`, id));
+      setSubscriptions(prev => prev.filter(sub => sub.id !== id));
     }
-  }, [db, userId]);
+  }, []);
 
   const calculateMonthlyCost = (cost: number, cycle: string) => {
     if (cycle === 'monthly') return cost;
@@ -118,7 +80,7 @@ const App = () => {
           {/* Left Column: Form */}
           <div className="lg:col-span-2 space-y-8">
             <section>
-              <SubscriptionForm db={db} userId={userId} appId={appId} />
+              <SubscriptionForm onAddSubscription={handleAddSubscription} />
             </section>
             
             <section className="grid grid-cols-1 gap-6">
