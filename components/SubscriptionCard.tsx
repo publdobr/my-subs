@@ -1,7 +1,6 @@
 import React from 'react';
 import { Subscription } from '../types';
 import { COLORS } from '../constants';
-import { Timestamp } from 'firebase/firestore';
 
 interface SubscriptionCardProps {
   sub: Subscription;
@@ -18,7 +17,7 @@ const calculateMonthlyCost = (cost: number, cycle: string) => {
 export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ sub, onDelete }) => {
   const monthlyCost = calculateMonthlyCost(sub.cost, sub.cycle);
   const cycleText = sub.cycle === 'monthly' ? 'Ежемесячно' : sub.cycle === 'annually' ? 'Ежегодно' : 'Еженедельно';
-  const nextDue = sub.nextDue instanceof Timestamp ? sub.nextDue.toDate().toLocaleDateString('ru-RU') : 'Неизвестно';
+  const nextDue = new Date(sub.nextDue).toLocaleDateString('ru-RU');
 
   const DeleteIcon = () => (
     <svg className="w-5 h-5 transform" viewBox="0 0 24 24" fill="none" stroke={COLORS.coral} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">

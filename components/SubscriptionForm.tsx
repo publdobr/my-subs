@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { addDoc, collection, Firestore, Timestamp } from 'firebase/firestore';
 import { COLORS } from '../constants';
+import { Subscription } from '../types';
 
 interface SubscriptionFormProps {
-  db: Firestore | null;
-  userId: string | null;
-  appId: string;
+  onAddSubscription: (subscription: Omit<Subscription, 'id'>) => void;
 }
 
 const InputField = ({ id, label, value, onChange, type, ...rest }: any) => (
@@ -25,7 +23,7 @@ const InputField = ({ id, label, value, onChange, type, ...rest }: any) => (
   </div>
 );
 
-export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ db, userId, appId }) => {
+export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ onAddSubscription }) => {
   const [name, setName] = useState('');
   const [cost, setCost] = useState('');
   const [cycle, setCycle] = useState('monthly');
@@ -37,8 +35,6 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ db, userId, 
     e.preventDefault();
     setError('');
 
-    if (!db || !userId) return;
-
     const parsedCost = parseFloat(cost);
     if (!name.trim() || isNaN(parsedCost) || parsedCost <= 0 || !nextDue) {
       setError('Заполни все поля корректно!');
@@ -47,12 +43,12 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ db, userId, 
 
     setIsLoading(true);
     try {
-      await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/subscriptions`), {
+      onAddSubscription({
         name: name.trim(),
         cost: parsedCost,
-        cycle,
-        nextDue: Timestamp.fromDate(new Date(nextDue)),
-        createdAt: Timestamp.now(),
+        cycle: cycle as 'monthly' | 'annually' | 'weekly',
+        nextDue: new Date(nextDue),
+        createdAt: new Date(),
       });
       setName(''); setCost(''); setCycle('monthly'); setNextDue('');
     } catch (e) {
